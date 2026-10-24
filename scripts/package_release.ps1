@@ -74,7 +74,26 @@ if (Test-Path (Join-Path $RootDir "LICENSE")) {
     Copy-Item (Join-Path $RootDir "LICENSE") -Destination $StagingDir
 }
 Copy-Item -Recurse (Join-Path $RootDir "examples") -Destination (Join-Path $StagingDir "examples")
-Get-ChildItem -Path (Join-Path $StagingDir "examples") -Recurse -Directory -Filter "build" | Remove-Item -Recurse -Force
+
+# Purge any build directories, compiler intermediates, CMake caches, and temporary databases
+$ExcludeDirs = @("build", "build_*", ".vs", "x64", "Debug", "Release", "out", "bin", "lib", ".cache")
+Get-ChildItem -Path (Join-Path $StagingDir "examples") -Recurse -Directory | Where-Object {
+    $dirName = $_.Name
+    foreach ($pattern in $ExcludeDirs) {
+        if ($dirName -like $pattern) { return $true }
+    }
+    return $false
+} | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
+$ExcludeExts = @("*.obj", "*.ilk", "*.pdb", "*.tlog", "*.idb", "*.lastbuildstate", "*.vcxproj*", "*.sln", "*.slnx", "*.user", "*.suo", "CMakeCache.txt", "cmake_install.cmake", "CTestTestfile.cmake", "*.kdb", "*.wal", "*.lock", "*.tmp", "*.bak")
+Get-ChildItem -Path (Join-Path $StagingDir "examples") -Recurse -File | Where-Object {
+    $fileName = $_.Name
+    foreach ($pattern in $ExcludeExts) {
+        if ($fileName -like $pattern) { return $true }
+    }
+    return $false
+} | Remove-Item -Force -ErrorAction SilentlyContinue
+
 Copy-Item -Recurse (Join-Path $RootDir "docs") -Destination (Join-Path $StagingDir "docs")
 
 # 6. Create Zip Archive and SHA-256 Checksum

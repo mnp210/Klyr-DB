@@ -1,5 +1,9 @@
 # KlyrDB Phase 13A — Release Candidate Verification Report
 
+> [!NOTE]
+> **Historical Audit Report:** This document records the verification of the initial release candidate archive (SHA-256: `E2FD557A97C4F3D89982513C8BB5061B02A387204EB944647918DEFB6C42868F`), which was found to contain intermediate build artifacts in `examples/**/build/`.
+> For the clean, validated release candidate archive (SHA-256: `58CF6568E9FB5DF8B37A865651A5E99218EDE451F3A9523689878DD4A1242DEA`), see [docs/phase-13b-release-verification.md](phase-13b-release-verification.md).
+
 **Date:** 2026-10-24  
 **Project:** KlyrDB C++20 Database Engine  
 **Release Candidate Version:** `0.12.0`  

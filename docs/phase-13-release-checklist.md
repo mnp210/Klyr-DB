@@ -19,4 +19,5 @@
 - [x] **Public C++ SDK Verification:** Public headers (`include/klyrdb/*.hpp`) self-contained, no private leakages, tested against external consumer apps (`examples/basic_cpp_app`, `examples/transactions_and_constraints`).
 - [x] **CMake Export Packages:** `KlyrDBConfig.cmake`, `KlyrDBConfigVersion.cmake`, and `KlyrDBTargets.cmake` tested and verified via `find_package(KlyrDB REQUIRED)`.
 - [x] **Distribution Packaging:** Automated packaging scripts (`scripts/package_release.ps1` and `scripts/package_release.sh`) produce self-contained release archives with SHA-256 checksums.
+- [x] **Clean Packaging Verification (Phase 13B):** Staging logic excludes intermediate compiler files, `.obj`, `.ilk`, `.pdb`, `.tlog`, and build directories from consumer archives. Verified clean archive SHA-256: `58CF6568E9FB5DF8B37A865651A5E99218EDE451F3A9523689878DD4A1242DEA` (`docs/phase-13b-release-verification.md`).
 - [x] **No Git Operations:** Preserved working tree status; zero git push, tags, or remote publication performed without user authorization.

@@ -1,76 +1,68 @@
-# KlyrDB — C++20 Relational Database Engine
+# KlyrDB
 
-**KlyrDB** is an embedded relational database engine implemented from scratch in modern standard C++20, inspired by SQLite's layered architecture. It features persistent slotted-page storage, a Clock-Pro buffer pool, B+ tree indexing, an ARIES-style Write-Ahead Logging (WAL) recovery manager, a cost-based query planner, relational constraints, process-level concurrency control, physical hot backup & atomic restore, and a modern C++ developer SDK.
+A persistent, embedded SQL relational database engine implemented from scratch in standard ISO C++20, featuring fixed 4096-byte slotted-page storage, B+ tree indexing, ARIES-style crash recovery, a cost-based query planner, relational constraints, physical snapshot backup & atomic restore, and a modern C++ developer SDK.
 
-- **Phase 1**: Core Storage Foundation (Fixed 4096-byte pages, Big-Endian binary format, CRC-32 integrity validation, PageFile persistence).
-- **Phase 2**: Buffer Pool, Slotted Pages & Record Manager (Clock replacement cache, PageGuard RAII, variable-length slotted pages, multi-page record CRUD, persistent RecordIds).
-- **Phase 3**: B+ Tree Indexing & Free-Space Map (Persistent balanced B+ tree index, dynamic node splits/merges, duplicate key support, sequential range iterator, persistent Index Catalog, and Free-Space Map).
-- **Phase 4**: SQL Language, Table Catalog & Query Execution (Persistent schema catalog, portable multi-table row codec, SQL Lexer, recursive-descent parser, query execution engine with B+ tree index acceleration, in-memory sorting, safety guards, and interactive SQL shell).
-- **Phase 5**: Write-Ahead Logging, Transactions & Crash Recovery (Persistent WAL `<dbname>.wal`, LSN tracking, Write-Ahead Rule enforcement, single-writer transaction model, multi-page reverse rollback, restartable 3-pass crash recovery, and 9 deterministic crash-injection scenarios).
-- **Phase 6**: Schema Constraints & Relational Integrity (`NOT NULL`, single-column `PRIMARY KEY`, single-column `UNIQUE`, and `FOREIGN KEY` with `RESTRICT`/`NO ACTION` referential integrity, backing unique B+ tree index synchronization, DDL/index protection, typed `NULL` support, multi-row atomicity, and backward compatibility).
-- **Phase 7**: Query Planning, Optimization & EXPLAIN (Cost-based query planner, physical access paths: Table Scan vs Index Seek vs Index Range Scan, cost estimation with unselective scan detection, multi-predicate conjunctions + residual filters, index-assisted ORDER BY elimination, early-exit LIMIT pushdown, and `EXPLAIN [QUERY PLAN]` inspection).
-- **Phase 8**: Concurrency Control, Locking & Database Hardening (Process file locking, shared-exclusive table & database concurrency guards, thread-safe buffer pool and page latching, multi-threaded reader-writer scaling, deadlock avoidance via ordered lock acquisition, and isolation hardening).
-- **Phase 9**: Checkpointing, WAL Lifecycle Management & Storage Reliability (Active transaction tracking, safe checkpoint boundary computation, atomic WAL truncation and space reclamation, optimized startup recovery from verified checkpoints, read-only storage and relational integrity verification subsystem, CLI operations, and crash simulation across 10 failure points).
-- **Phase 10**: Physical Backup, Atomic Restore, Logical Export/Import & Disaster Recovery (Physical snapshot backups with versioned `manifest.json` and CRC-32 bit-level checksums, standalone non-destructive `BackupVerifier`, transactional `RestoreManager` with pre-restore validation and atomic staging file swap, topological DAG-ordered logical SQL export/import, RFC 4180 CSV export/import with explicit NULL (`\N`) fidelity, 7 new CLI subcommands, 43/43 passing test suites, and empirical benchmarks).
-- **Phase 11**: Observability, Query Profiling, Fuzz Testing & Reliability Engineering (Thread-safe atomic metrics subsystem with zero critical-path disk overhead, `DatabaseMetricsRegistry`, human-readable and RFC 8259 JSON reporting, `EXPLAIN ANALYZE` with microsecond-resolution execution profiling and rows examined tracking, `TableStatisticsRegistry` and `ANALYZE` for distribution caching, property-based randomized transactions, SQL parser mutation fuzzing, multi-threaded reader-writer stress testing, 5 new test suites with 48/48 (100%) passing CTest targets, and reproducible OLTP benchmarks).
-- **Phase 12**: Release Engineering, Stable C++ API, Packaging & Developer SDK (Unified public C++20 developer interface via `<klyrdb/klyrdb.hpp>`, RAII `Database`, `Connection`, `ResultSet`, and `TransactionGuard`, CMake package config and `KlyrDB::KlyrDB` exported targets, reproducible Release packaging scripts, external standalone consumer examples, 50/50 passing CTest targets, and comprehensive developer documentation).
-- **Phase 13**: Adversarial Audit, Release Candidate & Portfolio Launch (Adversarial edge testing, malformed WAL record detection, ARIES recovery idempotence hardening via durable Abort records, Page 0 checkpoint LSN synchronization, standard SQL null semantics in unique indexes, 51/51 passing CTest suites, known limitations specification, and verified Windows x64 release distribution).
+> [!WARNING]
+> **Pre-1.0 Experimental Engine:** KlyrDB is an educational systems-programming project and experimental database engine designed for research, architecture study, and embedded exploration. It is **not** certified for mission-critical enterprise production deployments, and no claims of commercial ACID certification or universal fault tolerance are made.
 
 ---
 
 ## Architecture
 
+KlyrDB follows a layered, modular architecture inspired by classical database systems engineering:
+
 ```mermaid
 flowchart TD
-    subgraph Client["Application & CLI Layer"]
-        CLI["klyrdb CLI"]
-        SDK["Public C++ SDK (klyrdb/klyrdb.hpp)"]
+    subgraph Client["Client & Interface Layer"]
+        CLI["klyrdb CLI (src/main.cpp)"]
+        SDK["Public C++20 SDK (include/klyrdb/klyrdb.hpp)"]
     end
 
     subgraph SQLEngine["SQL Engine"]
-        Lexer["Lexer & Tokenizer"]
+        Lexer["SQL Lexer & Tokenizer"]
         Parser["Recursive-Descent Parser"]
         Planner["Cost-Based Query Planner"]
-        Executor["Execution Engine"]
+        Executor["Query Execution Engine"]
     end
 
-    subgraph Relational["Relational Integrity & Catalog"]
-        TableCat["Table Catalog"]
-        IndexCat["Index Catalog"]
-        Constraints["Constraint Engine (PK/FK/UNIQUE/CHECK)"]
+    subgraph Relational["Relational Catalog & Constraints"]
+        TableCat["Table Catalog (Schema & Columns)"]
+        IndexCat["Index Catalog (B+ Tree Metadata)"]
+        Constraints["Constraint Engine (PK, NOT NULL, UNIQUE, CHECK, FK RESTRICT)"]
     end
 
-    subgraph TxnSubsystem["Concurrency & Transactions"]
-        LockMgr["Database & Process Lock Manager"]
-        TxnMgr["Transaction Manager (ACID)"]
-        Recovery["ARIES Recovery Engine"]
-        Checkpoint["Checkpoint Manager"]
+    subgraph ConcurrencyTxn["Concurrency & Transaction Subsystem"]
+        LockMgr["Database & Process File Lock Manager (SWMR)"]
+        TxnMgr["Transaction Manager (BEGIN, COMMIT, ROLLBACK)"]
+        Recovery["ARIES 3-Pass Recovery Engine"]
+        Checkpoint["Checkpoint Manager & Safe Truncation"]
     end
 
     subgraph StorageEngine["Storage & Buffer Pool Engine"]
-        BPM["Buffer Pool Manager (Clock-Pro)"]
-        SlottedPage["Slotted Page Manager"]
-        RecordMgr["Record Manager (CRUD)"]
-        BPlusTree["B+ Tree Index Engine"]
-        FSM["Free Space Map"]
-        PageFile["Persistent Page File (4KB Pages)"]
+        BPM["Buffer Pool Manager (Clock-Pro Cache & PageGuard)"]
+        SlottedPage["Slotted Page Manager (4096-Byte Pages)"]
+        RecordMgr["Record Manager (Variable-Length CRUD)"]
+        BPlusTree["Persistent B+ Tree Index Engine"]
+        FSM["Free-Space Map (FSM)"]
+        PageFile["Persistent PageFile (OS I/O & CRC-32)"]
     end
 
     subgraph Durability["Durability & Disaster Recovery"]
-        WAL["Write-Ahead Log (WAL)"]
-        BackupMgr["Physical Backup & Verification"]
-        RestoreMgr["Atomic Restore Manager"]
+        WAL["Write-Ahead Log (.wal & LSN Tracking)"]
+        BackupMgr["Physical Snapshot Backup Manager"]
+        RestoreMgr["Atomic Restore & Verification Engine"]
+        Migrator["Logical SQL Exporter & RFC 4180 CSV Migrator"]
     end
 
     CLI --> SDK
     SDK --> SQLEngine
     SQLEngine --> Relational
-    SQLEngine --> TxnSubsystem
+    SQLEngine --> ConcurrencyTxn
     SQLEngine --> StorageEngine
     Relational --> StorageEngine
-    TxnSubsystem --> WAL
-    TxnSubsystem --> StorageEngine
-    TxnSubsystem --> Recovery
+    ConcurrencyTxn --> WAL
+    ConcurrencyTxn --> StorageEngine
+    ConcurrencyTxn --> Recovery
     Recovery --> WAL
     Recovery --> StorageEngine
     Checkpoint --> StorageEngine
@@ -78,447 +70,323 @@ flowchart TD
     BackupMgr --> StorageEngine
     BackupMgr --> WAL
     RestoreMgr --> StorageEngine
+    RestoreMgr --> Recovery
+    Migrator --> SQLEngine
     StorageEngine --> PageFile
 ```
 
 ---
 
-## System Capabilities & Limitations
+## Core Capabilities by Subsystem
 
-| Capability | Supported Specification | Documented Limitation |
+### 1. Storage & Page Architecture
+- **Fixed 4096-Byte Pages:** Big-endian binary page format with 24-byte headers, monotonic page LSNs, and IEEE 802.3 32-bit CRC-32 integrity validation.
+- **Slotted-Page Tuple Management:** Variable-length records with slotted-page directory indirection, slot compaction, and persistent `[page_id:slot_id]` record identifiers (`RecordId`).
+- **Clock-Pro Buffer Pool:** Configurable in-memory frame cache with clock eviction policy, dirty-frame tracking, and RAII pinned `PageGuard` handles.
+- **Free-Space Map (FSM):** Bitmap/byte-level capacity indexing allowing efficient $O(1)$ page allocation for record insertion.
+
+### 2. SQL Grammar & Execution
+- **Data Definition Language (DDL):** `CREATE TABLE`, `DROP TABLE`, `CREATE [UNIQUE] INDEX`, `DROP INDEX`.
+- **Data Manipulation Language (DML):** `INSERT INTO`, `SELECT` (with column projection, `WHERE` predicates, `ORDER BY`, and `LIMIT`), `UPDATE` (scoped `WHERE` required for safety), and `DELETE`.
+- **Relational Constraints:** Single-column `PRIMARY KEY`, `NOT NULL`, column-level and table-level `UNIQUE`, `CHECK` boolean expressions, and `FOREIGN KEY ... REFERENCES` with `RESTRICT` on delete/update.
+- **First-Class NULL Semantics:** SQL three-valued logic; explicit distinction between `NULL`, empty string (`""`), and integer `0`; standard SQL multi-null semantics in unique indexes.
+
+### 3. Transactions & Crash Recovery
+- **Single-Writer / Multi-Reader (SWMR):** Shared/exclusive database locking complemented by operating-system advisory file locking (`.lock`) preventing concurrent process interference.
+- **Write-Ahead Logging (WAL):** Dedicated companion log file (`<dbname>.wal`) enforcing the Write-Ahead Rule (log flushed before dirty page eviction).
+- **Multi-Page Rollback:** In-memory before-image capture with reverse-order undo across complex multi-page modifications.
+- **ARIES-Style 3-Pass Recovery:** Restartable Analysis, Redo, and Undo passes; generates durable `Abort` records to guarantee recovery idempotence.
+- **Safe Checkpointing & Log Truncation:** Active transaction tracking identifies safe recovery horizons, flushes dirty pages, syncs Page 0 checkpoint LSN, and atomically truncates obsolete WAL records.
+
+### 4. Indexing & Cost-Based Query Planning
+- **Persistent B+ Tree Indexes:** Balanced tree storage supporting 64-bit integer and text keys up to 256 bytes, dynamic page split/merge balancing, and forward/reverse sequential leaf iteration.
+- **Cost-Based Query Planner:** Evaluates physical access paths (`TableScan`, `IndexSeek`, `IndexRangeScan`) against calibrated I/O and CPU cost formulas.
+- **Plan Optimizations:** Multi-condition range consolidation, residual filter pushdown, index-assisted `ORDER BY` sort elimination, early-exit `LIMIT` pushdown, and unselective index fallback.
+- **Execution Profiling (`EXPLAIN` & `EXPLAIN ANALYZE`):** Read-only inspection of physical query plans and runtime execution profiling with microsecond timing and rows examined telemetry.
+
+### 5. Reliability, Diagnostics & Disaster Recovery
+- **Physical Snapshot Backup (`BackupManager`):** Coordinated online snapshot backups generating standalone directories containing verified `manifest.json`, component file CRC-32 checksums, and flushed data/log state.
+- **Atomic Disaster Restore (`RestoreManager`):** Pre-restore integrity audit, non-destructive staging recovery replay, and atomic directory swap preventing partial-restore database corruption.
+- **Storage Integrity Verification (`IntegrityChecker`):** Multi-layer offline/online audit validating page CRC-32 checksums, slotted-page directory integrity, B+ tree key ordering, and foreign key referential consistency.
+- **Data Migration:** RFC 4180 CSV export/import with explicit `\N` null fidelity; topological DAG-ordered logical SQL schema and data export/import.
+- **Runtime Observability:** Zero disk-overhead atomic metric registry tracking buffer pool hits, query durations, lock contention, and recovery operations with JSON export.
+
+### 6. Developer API & SDK
+- **Modern C++20 Interface:** Unified public umbrella header `<klyrdb/klyrdb.hpp>` exporting RAII `Database`, `Connection`, `ResultSet`, and `TransactionGuard` abstractions.
+- **Modern CMake Packaging:** Standard `find_package(KlyrDB REQUIRED)` integration exporting `KlyrDB::KlyrDB` target with zero external dependencies.
+
+---
+
+## Known Architecture & Engine Limitations
+
+To maintain technical integrity, external evaluators and developers should note the current engine constraints:
+
+| Subsystem | Verified Capability | Architectural Limitation |
 |---|---|---|
-| **Storage Architecture** | Fixed 4096-byte slotted pages, IEEE CRC-32 checksums | Single tuple max 4072 bytes (no overflow pages) |
-| **Indexing** | B+ Tree with integer & string single-column keys | No composite/multi-column indexes |
-| **SQL Engine** | `CREATE TABLE`, `DROP TABLE`, `CREATE INDEX`, `DROP INDEX`, `INSERT`, `SELECT`, `UPDATE`, `DELETE`, `EXPLAIN` | No `JOIN`, `GROUP BY`, `HAVING`, or window functions |
-| **Transactions** | Strict 2-Phase Locking (Single-Writer / Multi-Reader), Write-Ahead Logging, Rollbacks | Coarse-grained exclusive write locks |
-| **Crash Safety** | ARIES-style redo/undo recovery with checkpoint acceleration | Requires companion WAL file (`.wal`) |
-| **Data Migration** | RFC 4180 CSV export/import (`\N` nulls), Topological SQL dump | CSV import requires pre-created table schema |
-| **Deployment** | Embedded library (`KlyrDB::KlyrDB`) and interactive CLI (`klyrdb`) | No network server / TCP protocol daemon |
-
-
----
-
-## Architecture Overview
-
-```text
-KlyrDB/
-├── CMakeLists.txt              # Root build configuration
-├── CMakePresets.json           # Presets for standard and debug builds
-├── README.md                   # Project documentation
-├── .gitignore                  # Git ignore rules
-├── docs/                       # Technical & architectural specifications
-│   ├── architecture.md         # Subsystem architecture & dependency chain
-│   ├── storage-format.md       # On-disk binary format specification
-│   ├── constraints.md          # Schema constraints & relational integrity specification
-│   ├── wal.md                  # Write-Ahead Log format & LSN mechanics
-│   ├── transactions.md         # Transaction states, before-images & rollback
-│   ├── recovery.md             # ARIES-style 3-pass recovery algorithm
-│   ├── table-catalog.md        # Persistent schema catalog & multi-table format
-│   ├── sql-engine.md           # SQL parser, AST, executor & index selection
-│   ├── query-planner.md        # Cost-based query planner, cost formulas & access paths
-│   ├── explain.md              # EXPLAIN & EXPLAIN QUERY PLAN syntax & formats
-│   ├── buffer-pool.md          # Buffer pool, Clock replacer & PageGuard design
-│   ├── slotted-pages.md        # Slotted page binary format & compaction
-│   ├── record-manager.md       # RecordManager & RecordId semantics
-│   ├── bplus-tree.md           # B+ tree indexing engine & node layouts
-│   ├── free-space-map.md       # Free-Space Map architecture & capacity rules
-│   ├── checkpointing.md        # Safe checkpointing protocol, boundaries & truncation
-│   ├── integrity-check.md      # Read-only storage & relational integrity verification
-│   ├── phase-1-testing.md      # Phase 1 test coverage matrix
-│   ├── phase-2-testing.md      # Phase 2 test coverage matrix
-│   ├── phase-3-testing.md      # Phase 3 test matrix & empirical benchmarks
-│   ├── phase-4-testing.md      # Phase 4 test report & verification
-│   ├── phase-5-testing.md      # Phase 5 test report & crash matrix
-│   ├── phase-6-testing.md      # Phase 6 test report & constraints verification
-│   ├── phase-7-testing.md      # Phase 7 test report & optimizer benchmarks
-│   ├── phase-8-preflight-audit.md # Phase 8 concurrency audit
-│   ├── physical-backup.md      # Physical snapshot backup, locking & atomic publication
-│   ├── restore.md              # Atomic disaster recovery, staging swap & verification
-│   ├── logical-export-import.md # DAG topological SQL export & RFC 4180 CSV migration
-│   ├── backup-format.md        # Backup manifest.json schema & component records
-│   ├── phase-10-preflight-audit.md # Phase 10 preflight audit
-│   └── phase-10-testing.md     # Phase 10 test report (43 suites) & benchmarks
-├── include/klyrdb/
-│   ├── common/                 # Core utilities
-│   │   ├── types.hpp           # Primitives (page_id_t, slot_id_t, lsn_t, PageType)
-│   │   ├── status.hpp          # Rich status codes and diagnostics
-│   │   ├── result.hpp          # Monadic Result<T> container
-│   │   ├── endian.hpp          # Portable Big-Endian bit-shifters
-│   │   └── checksum.hpp        # CRC-32 (IEEE 802.3) table implementation
-│   ├── storage/                # Storage, Caching, & Space Management
-│   │   ├── page_constants.hpp  # Offsets, signatures, page sizes
-│   │   ├── page_header.hpp     # 24-byte page header representation (with page_lsn)
-│   │   ├── page.hpp            # 4096-byte page abstraction & serialization
-│   │   ├── page_file.hpp       # RAII database file manager with hardware sync
-│   │   ├── metadata_page.hpp   # Page 0 database header & system metadata
-│   │   ├── buffer_pool_manager.hpp # Clock-replacer buffer pool manager with WAL sync
-│   │   ├── page_guard.hpp      # RAII pinned page guard
-│   │   ├── slotted_page.hpp    # Slotted page for variable-length records
-│   │   ├── record_id.hpp       # Persistent [page_id:slot_id] identifier
-│   │   ├── record_manager.hpp  # Multi-page record CRUD manager
-│   │   ├── record.hpp          # Versioned, typed tuple serialization
-│   │   ├── free_space_map.hpp  # Persistent Free-Space Map (FSM)
-│   │   └── integrity_checker.hpp # Multi-layer storage & constraint integrity auditor
-│   ├── index/                  # B+ Tree Indexing Engine
-│   │   ├── key.hpp             # Strongly-typed IndexKey & IndexEntry
-│   │   ├── bplus_tree_node.hpp # Page-backed B+ tree node operator
-│   │   ├── bplus_tree.hpp      # Persistent B+ Tree & BPlusTreeIterator
-│   │   └── index_catalog.hpp   # Persistent Index Catalog
-│   ├── catalog/                # Relational Schema Management
-│   │   └── table_catalog.hpp   # Persistent Table Catalog (PageType::TableCatalog)
-│   ├── wal/                    # Write-Ahead Logging
-│   │   ├── log_record.hpp      # Binary WAL record format (25B header + images + CRC)
-│   │   └── write_ahead_log.hpp # Persistent WAL manager & durable flushes
-│   ├── txn/                    # Transaction Engine
-│   │   ├── transaction.hpp     # Transaction state & page change history
-│   │   └── transaction_manager.hpp # BEGIN, COMMIT, multi-page ROLLBACK
-│   ├── recovery/               # Crash Recovery Engine
-│   │   ├── recovery_manager.hpp # 3-pass restartable crash recovery
-│   │   ├── checkpoint_manager.hpp # Safe & passive checkpoint protocol
-│   │   └── crash_simulator.hpp  # 10 deterministic crash-injection points
-│   └── sql/                    # SQL Engine Subsystem
-│       ├── value.hpp           # SqlValue (Integer, Text) & conversions
-│       ├── row.hpp             # Portable row serialization with table_id
-│       ├── token.hpp           # SQL Token definitions
-│       ├── lexer.hpp           # Tokenizer with case-insensitivity & escapes
-│       ├── ast.hpp             # Abstract Syntax Tree nodes (includes BEGIN/COMMIT/ROLLBACK)
-│       ├── parser.hpp          # Recursive-descent SQL parser
-│       ├── query_plan.hpp      # QueryPlan, AccessPathType & PlanCost models
-│       ├── query_planner.hpp   # Cost-based QueryPlanner engine
-│       ├── query_result.hpp    # Tabular query results & ASCII table renderer
-│       ├── executor.hpp        # Query executor with transaction integration
-│       └── sql_shell.hpp       # Interactive SQL REPL & dot commands
-├── src/
-│   ├── common/                 # Common implementations
-│   ├── storage/                # Storage engine implementations
-│   ├── index/                  # Index engine implementations
-│   ├── catalog/                # Table catalog implementation
-│   ├── wal/                    # WAL implementations
-│   ├── txn/                    # Transaction implementations
-│   ├── recovery/               # Recovery implementations
-│   ├── sql/                    # SQL engine implementations
-│   ├── backup/                 # Phase 10 Backup, Restore & Migration engines
-│   └── main.cpp                # CLI database utility tool
-├── benchmarks/
-│   ├── benchmark_index.cpp     # Point lookup, range scan & FSM benchmark
-│   ├── benchmark_query_optimizer.cpp # Cost-based optimizer speedup benchmark
-│   ├── benchmark_concurrency.cpp # Multi-threaded reader/writer benchmark
-│   ├── benchmark_wal_lifecycle.cpp # Phase 9 WAL lifecycle & checkpoint benchmark
-│   └── benchmark_backup_restore.cpp # Phase 10 Backup, Restore & Migration benchmark
-├── examples/
-│   ├── storage_demo.cpp        # Standalone Phase 3 storage demonstration
-│   ├── sql_demo.cpp            # Standalone Phase 4 SQL engine demonstration
-│   ├── wal_demo.cpp            # Standalone Phase 5 WAL, txn & recovery demonstration
-│   └── constraints_demo.cpp    # Standalone Phase 6 relational constraints demonstration
-└── tests/
-    ├── CMakeLists.txt          # Test runner configuration (43 suites)
-    ├── test_framework.hpp      # Lightweight hermetic test harness
-    ├── test_page.cpp           # Page serialization & checksum unit tests
-    ├── test_page_file.cpp      # File management & boundary tests
-    ├── test_persistence.cpp    # End-to-end multi-page & corruption tests
-    ├── test_buffer_pool.cpp    # Buffer pool & Clock eviction unit tests
-    ├── test_slotted_page.cpp   # Slotted page & compaction unit tests
-    ├── test_record_manager.cpp # Multi-page record manager integration tests
-    ├── test_bplus_tree.cpp     # B+ tree splits, merges, duplicates, iterators
-    ├── test_fsm.cpp            # Free-Space Map unit & persistence tests
-    ├── test_index_integration.cpp # End-to-end index + FSM + buffer pressure tests
-    ├── test_sql_lexer.cpp      # SQL lexical analyzer unit tests
-    ├── test_sql_parser.cpp     # SQL AST and parser unit tests
-    ├── test_table_catalog.cpp  # Table schema catalog persistence tests
-    ├── test_sql_executor.cpp   # End-to-end SQL CRUD & indexing tests
-    ├── test_wal.cpp            # WAL append, LSN, checksum & flush unit tests
-    ├── test_transaction.cpp    # Transaction lifecycle & multi-page rollback tests
-    ├── test_recovery.cpp       # Redo, undo & restartable recovery tests
-    ├── test_crash_recovery.cpp # 10 deterministic crash-injection scenarios
-    ├── test_constraints.cpp    # NOT NULL, PK, UNIQUE, FK, DDL protection tests
-    ├── test_constraint_transactions.cpp # Multi-row atomicity & rollback tests
-    ├── test_query_planner.cpp  # Planner access paths, ORDER BY & LIMIT unit tests
-    ├── test_explain.cpp        # EXPLAIN formatting & mutation rejection tests
-    ├── test_query_plan_execution.cpp # Range scan, residual filter & pushdown tests
-    ├── test_query_optimization.cpp # Unselective scan fallback & txn consistency tests
-    ├── test_database_locking.cpp # Phase 8 exclusive & shared lock tests
-    ├── test_process_locking.cpp # Inter-process lock file tests
-    ├── test_buffer_pool_concurrency.cpp # Multi-threaded buffer pool tests
-    ├── test_concurrent_reads.cpp # Multi-threaded read scaling tests
-    ├── test_concurrent_writes.cpp # Multi-threaded write isolation tests
-    ├── test_transaction_isolation.cpp # Dirty-read avoidance tests
-    ├── test_checkpoint.cpp     # Phase 9 safe checkpoint & dirty flush tests
-    ├── test_wal_retention.cpp  # Active transaction retention & safe truncation
-    ├── test_checkpoint_recovery.cpp # Fast recovery from checkpoint boundary
-    ├── test_integrity_check.cpp # Multi-layer storage & constraint validation
-    ├── test_storage_corruption.cpp # Checksum, slotted-page & WAL corruption detection
-    ├── test_wal_lifecycle.cpp  # End-to-end lifecycle & crash resilience tests
-    ├── test_physical_backup.cpp # Phase 10 snapshot backup & manifest validation
-    ├── test_backup_verification.cpp # Standalone non-destructive backup verifier
-    ├── test_backup_corruption.cpp # Bit-level corruption & truncated manifest tests
-    ├── test_restore.cpp        # Atomic physical restore with validation
-    ├── test_restore_failure_safety.cpp # Aborted restore non-destructive tests
-    ├── test_logical_export_import.cpp # Topological DAG SQL dump & replay
-    ├── test_csv_export_import.cpp # RFC 4180 CSV export/import with NULL fidelity
-    └── test_backup_crash_recovery.cpp # Restoring backup with active WAL & recovery
-```
+| **Concurrency** | Concurrent multi-threaded and multi-process readers via shared locking | Single active writer (SWMR); mutations acquire coarse-grained exclusive database locks |
+| **Record Size** | Slotted-page variable-length storage | Maximum tuple payload is 4,072 bytes; no multi-page overflow pages (TOAST) |
+| **SQL Engine** | `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `WHERE`, `ORDER BY`, `LIMIT` | No `JOIN` operations, no subqueries, no `GROUP BY`/`HAVING`, no window functions |
+| **Aggregations** | Result set row counts via `ResultSet::row_count()` | No SQL query expression aggregates (`COUNT(*)`, `SUM()`, `AVG()`, `MIN()`, `MAX()`) |
+| **Schema Evolution** | `CREATE TABLE`, `DROP TABLE`, `CREATE INDEX`, `DROP INDEX` | No `ALTER TABLE` schema mutations |
+| **Indexing** | Single-column integer (`int64_t`) and text (`std::string`) keys | No composite / multi-column index keys |
+| **Deployment** | Embedded library and standalone local CLI utility | No background TCP/IP server daemon or client-server network protocol |
 
 ---
 
-## Key Features in Phase 12
-
-1. **Stable Public C++20 API (`<klyrdb/klyrdb.hpp>`)**:
-   - `klyrdb::Database`: RAII container managing database files, buffer pool cache, WAL, and catalogs. Supports `open(path, options)`, `checkpoint()`, `integrity_check()`, and direct `execute()`.
-   - `klyrdb::Connection`: Active session abstraction managing transaction boundaries and queries (`execute()`, `begin_transaction()`, `commit()`, `rollback()`).
-   - `klyrdb::ResultSet`: Tabular query results supporting case-insensitive column lookups (`row["name"]`), zero-based indexing (`row[0]`), and range-based for loops.
-   - `klyrdb::TransactionGuard`: RAII transaction guard that automatically rolls back uncommitted changes on scope exit unless explicitly committed.
-   - `klyrdb::version()`: Programmatic inspection of semantic engine version (`0.12.0`), storage format version (`1`), and backup format version (`1`).
-2. **CMake Package Export & Target Integration (`KlyrDB::KlyrDB`)**:
-   - Generates `KlyrDBConfig.cmake`, `KlyrDBConfigVersion.cmake`, and `KlyrDBTargets.cmake` with `GNUInstallDirs` conventions.
-   - Downstream projects integrate seamlessly using `find_package(KlyrDB REQUIRED)` and `target_link_libraries(my_app PRIVATE KlyrDB::KlyrDB)`.
-3. **External Consumer Examples (`examples/`)**:
-   - `examples/basic_cpp_app/`: Standalone application demonstrating database creation, table DDL, row insertions, `SELECT` queries, error handling, transaction rollback, closure, and cross-session persistence verification.
-   - `examples/transactions_and_constraints/`: Demonstrates relational constraints (`PRIMARY KEY`, `NOT NULL`, `UNIQUE`) and automatic rollback on constraint violations using `TransactionGuard`.
-4. **Reproducible Release Packaging (`scripts/`)**:
-   - `package_release.ps1` (Windows) and `package_release.sh` (Linux) automate Release configuration, clean compilation, 50-suite CTest validation, staging installation, and archive compression with SHA-256 checksum generation.
-5. **Automated Continuous Integration Matrix**:
-   - `.github/workflows/ci.yml`: Multi-compiler CI matrix testing MSVC (Debug/Release on Windows), GCC 12 (Release on Ubuntu), Clang 15 (Release on Ubuntu), including packaging, consumer validation, and CLI smoke testing.
-   - `.github/workflows/extended_reliability.yml`: Scheduled nightly stress testing and reliability benchmarks.
-6. **CLI Usability & Version Subcommands**:
-   - `klyrdb version`, `klyrdb --version`, `klyrdb -v`: Reports engine release, storage format, and backup format versioning.
-   - Automated CLI test suite (`tests/test_cli_smoke.cpp`) executing full subprocess workflows.
-
----
-
-## Key Features in Phase 11
-
-1. **In-Memory Thread-Safe Observability (`DatabaseMetrics` & `DatabaseMetricsRegistry`)**:
-   - Zero-overhead atomic counters (`std::atomic<uint64_t>`, `std::memory_order_relaxed`) across all engine subsystems.
-   - Buffer Pool instrumentation: page requests, cache hits/misses, hit ratio, physical reads/writes, page flushes, evictions, allocation failures, and pinned frame gauges.
-   - SQL Query execution tracking: total/successful/failed statements, microsecond execution duration, rows examined/returned/inserted/updated/deleted, table scans vs index seeks/range scans, and in-memory sort operations.
-   - Transaction & concurrency metrics: transactions started/committed/aborted/rolled back, commit failures, lock waits, timeouts, and contention duration.
-   - WAL, checkpointing, and recovery telemetry: WAL bytes written/flushed, log records generated/scanned, checkpoints attempted/succeeded, recoveries attempted/succeeded, pages redone/undone.
-   - Point-in-time immutable `DatabaseMetricsSnapshot` with human-readable table formatter and RFC 8259 JSON serialization (`to_json()`).
-2. **Query Profiling & `EXPLAIN ANALYZE`**:
-   - High-resolution runtime execution profiling (`std::chrono::steady_clock`) of physical query plan nodes.
-   - Displays combined query plan, planning duration (in $\mu\text{s}$), execution duration (in $\mu\text{s}$), estimated rows vs actual rows returned, and total rows examined from storage.
-   - Strict read-only guarantee rejecting mutations under profiling.
-3. **Table & Column Distribution Statistics (`TableStatistics` & `TableStatisticsRegistry`)**:
-   - Scans slotted pages and analyzes total rows, page footprints, distinct values, null counts, and min/max key bounds per column.
-   - Provides $O(1)$ fast cardinality estimation for `QueryPlanner::estimate_table_rows()`, eliminating expensive page scans during plan creation.
-   - Dedicated CLI command: `klyrdb analyze <file> [table]`.
-4. **Fuzz Testing & Mutation Invalidation (`test_fuzz_mutations.cpp`)**:
-   - Comprehensive query parser mutation fuzzer testing bit-flips, byte insertions/deletions, raw null-byte injections, boundary values, and truncated statements.
-   - Slotted page and WAL record header bit-flip mutation verifying deterministic error codes without crashes or undefined behavior.
-5. **Reliability & Stress Testing (`test_reliability_stress.cpp` & `test_randomized_sql.cpp`)**:
-   - Multi-threaded concurrent reader-writer stress with background workers querying against interleaved committing and rolling-back transactions.
-   - Crash recovery stress simulation via `BufferPoolManager::drop_frames_without_flush()`, verifying multi-pass recovery across consecutive crash generations.
-   - Property-based randomized SQL workload with 100 random multi-statement transaction sequences.
-6. **Production CLI Diagnostics Tools**:
-   - `klyrdb stats <db>`: Displays runtime operational metrics snapshot.
-   - `klyrdb stats-reset <db>`: Resets runtime metrics and cached statistics.
-   - `klyrdb diagnostics <db> [--json]`: Comprehensive storage health and metrics report.
-   - `klyrdb analyze <db> [table]`: Gathers and caches distribution statistics.
-
----
-
-## Key Features in Phase 10
-
-1. **Physical Snapshot Backup Engine (`BackupManager`)**:
-   - Acquires coordinated snapshot shared locks (`DatabaseLock` and `ProcessFileLock`) without blocking concurrent query readers.
-   - Flushes dirty buffer pool pages and forces hardware durability sync (`FlushFileBuffers`/`fsync`).
-   - Copies database and WAL components under canonical names (`data.kdb`, `wal.log`) to staging.
-   - Computes IEEE 802.3 32-bit CRC-32 bit-level checksums for all component files.
-   - Emits versioned `manifest.json` with storage engine versions, geometry, checkpoint LSN, and minimum active LSN.
-   - Atomically publishes backup directory upon complete validation.
-2. **Independent Non-Destructive Backup Verifier (`BackupVerifier`)**:
-   - Audits backup directories without mutating files or requiring an active engine instance.
-   - Validates JSON manifest syntax, storage compatibility, publication status, file existence, and byte sizes.
-   - Recalculates and verifies bit-level CRC-32 hashes against manifest signatures.
-   - Inspects Page 0 metadata geometry and verifies catalog/index structures.
-3. **Atomic Disaster Recovery & Restore Engine (`RestoreManager`)**:
-   - Performs pre-restore verification to guarantee source backup validity before touching the destination.
-   - Protects existing databases from unintended overwrites unless `--force` is specified.
-   - Enforces exclusive lock acquisition on target database path.
-   - Replays crash recovery (Analysis -> Redo -> Undo) on staging if uncheckpointed WAL records exist.
-   - Runs post-restore storage integrity verification before publication.
-   - Executes atomic swap with rollback staging guard, preserving prior database state on failure.
-4. **Topological DAG Logical SQL Dump & Replay (`LogicalExporter` & `LogicalImporter`)**:
-   - Analyzes foreign key relationships and constructs directed dependency graph.
-   - Computes Kahn's topological sort, guaranteeing parent tables (`departments`) are created and populated before child tables (`employees`).
-   - Formats typed SQL literals with distinct `NULL` keyword support and standard quote escaping (`''`).
-   - Executes DDL outside transactions, wraps record inserts in transactional blocks (`BEGIN ... COMMIT`), and defers secondary index creation.
-   - Streams dump files incrementally via `StatementStreamReader`, guaranteeing clean transactional rollback on error.
-5. **RFC 4180 High-Fidelity CSV Migration Engine (`CsvMigrator`)**:
-   - Emits and parses standard CSV files with header rows and field escaping for commas, quotes, and embedded newlines.
-   - Explicit `NULL` representation using `\N` sentinel, preserving fidelity against empty strings (`""`).
-   - Validates all imported rows against table relational constraints (`NOT NULL`, `PRIMARY KEY`, `UNIQUE`, `CHECK`, `FOREIGN KEY`).
-6. **Unified CLI Command Set**:
-   - Added 7 new production subcommands: `backup`, `backup-verify`, `restore`, `dump`, `import`, `export-csv`, and `import-csv`.
-
----
-
-## Key Features in Phase 9
-
-1. **Safe & Verifiable Checkpoint Boundary (`CheckpointManager`)**:
-   - Computes recovery baseline by reconciling active in-flight transactions with dirty buffer pool pages.
-   - Captures active transactions and earliest active record LSN (`min_required_lsn`) into structured `LogRecord::make_checkpoint()`.
-   - Flushes dirty pages, issues hardware durability barrier (`fsync`/`FlushFileBuffers`), and records checkpoint LSN atomically into Page 0 at byte offset 40.
-2. **Safe WAL Retention & Atomic Truncation**:
-   - `truncate_safe()` protects active transactions from log truncation, never pruning records needed for rollback.
-   - Truncation executed via atomic temp-file write and swap (`.wal.tmp` -> `.wal`), eliminating partial-write crash vulnerabilities.
-   - Storage reclaimed immediately, reducing log footprints by up to 100% in steady-state operations.
-3. **Startup Recovery Acceleration**:
-   - `RecoveryManager::recover()` utilizes Page 0 checkpoint LSN to position the Analysis and Redo passes directly at the active recovery horizon.
-   - Skips redundant re-reads and writes of already-flushed data pages using idempotent LSN comparison (`page.page_lsn() >= record.lsn`).
-   - Detailed telemetry metrics reporting records scanned, pages redone/undone, WAL sizes, and execution duration in milliseconds.
-4. **Read-Only Storage & Relational Integrity Verification (`IntegrityChecker`)**:
-   - Audits Page 0 metadata, physical page counts, and page type tags.
-   - Recomputes CRC-32 checksums for every page across the database file.
-   - Verifies slotted page headers, free-space pointers, and slot directory bounds.
-   - Audits B+ tree structural invariants: sorted keys, leaf sibling links, child-parent relationships.
-   - Cross-references catalog entries, Free-Space Map state, and verifies `NOT NULL`, `PRIMARY KEY`, `UNIQUE`, and `FOREIGN KEY` referential integrity.
-5. **Operational CLI Subcommands**:
-   - `klyrdb checkpoint <db>`: Flushes dirty state and truncates unnecessary log records.
-   - `klyrdb integrity-check <db>`: Comprehensive non-destructive health audit.
-
----
-
-## Key Features in Phase 7
-
-1. **Dedicated Query Planner Subsystem (`QueryPlanner`, `QueryPlan`)**:
-   - Cleanly decoupled from execution, supporting cost-based optimization and explainability.
-   - Physical access path generation: Table Scan, Index Seek, and Index Range Scan.
-2. **Intelligent Index Selection**:
-   - Single-key equality lookups (`col = val`) choose Index Seek on PK or secondary indexes.
-   - Multi-condition range consolidation combines `>` / `>=` and `<` / `<=` into unified bounds.
-   - Conjunction support with residual filters applied post-index retrieval.
-3. **Calibrated Cost Model & Unselective Inversion**:
-   - Accurate cost estimation balancing page I/O, random record dereferencing, and CPU filtering.
-   - Inverts execution choice to Table Scan when index range scans cover large fractions of the table.
-4. **Order By Elimination & Limit Pushdown**:
-   - Leverages forward and reverse B+ tree leaf traversal to satisfy `ORDER BY` without in-memory sorting.
-   - Pushes down `LIMIT` into the access path for instant early-exit termination.
-5. **Standard EXPLAIN [QUERY PLAN] Support**:
-   - Formatted plan inspection with estimated rows and cost.
-   - Strict read-only guarantee with rejection of data mutations.
-
----
-
-## Key Features in Phase 6
-
-1. **Enterprise Relational Constraints**:
-   - `NOT NULL`: Column-level non-null requirement on insert and update.
-   - `PRIMARY KEY`: Column-level and table-level primary keys backed by automatic unique B+ tree indexes.
-   - `UNIQUE`: Column-level and table-level unique constraints backed by automatic unique B+ tree indexes; allows multiple `NULL` values.
-   - `FOREIGN KEY`: Column-level `REFERENCES` and table-level `FOREIGN KEY ... REFERENCES` with parent existence, column compatibility, and `RESTRICT`/`NO ACTION` semantics on parent delete and update.
-2. **First-Class NULL Semantics**:
-   - `SqlValue` represents `NULL` as distinct from `""` (empty string) and `0` (zero).
-   - Serialized with a single type tag and 0 payload bytes.
-   - SQL three-valued logic and distinct index key handling.
-3. **DDL & Index Protection**:
-   - Blocks `DROP INDEX` against constraint-enforcing indexes.
-   - Blocks `DROP TABLE` against referenced parent tables.
-4. **Multi-Row & Transaction Atomicity**:
-   - Pre-validation prevents partial row insertions or corrupt index states when constraints are violated.
-   - Clean rollback under explicit and implicit transaction scopes.
-
----
-
-## Key Features in Phase 5
-
-1. **Persistent Write-Ahead Log (`WriteAheadLog`)**:
-   - Companion log file `<dbname>.wal` with binary records protected by 32-bit CRC-32 checksums.
-   - Monotonic LSN sequencing and page LSN tracking in `PageHeader` offset 20.
-   - True hardware durability flushes (`FlushFileBuffers` on Windows, `fsync` on POSIX).
-2. **Buffer Pool Write-Ahead Rule Enforcement**:
-   - Eviction of dirty frames and explicit page flushes are blocked until all log records up to `page_lsn` are durably synced to disk.
-3. **Transaction Engine (`TransactionManager`)**:
-   - Single-writer model with explicit `Active`, `Committed`, and `Aborted` states.
-   - In-memory before-image capture and multi-page reverse rollback.
-   - SQL integration for `BEGIN`, `COMMIT`, `ROLLBACK`, plus automatic statement-level implicit transaction safety for single mutations.
-4. **Restartable Crash Recovery Engine (`RecoveryManager`)**:
-   - Three-pass recovery algorithm:
-     - **Analysis Pass**: Scans forward from checkpoint to identify committed and uncommitted transactions.
-     - **Redo Pass**: Replays page modifications for committed transactions where `page_lsn < rec.lsn`.
-     - **Undo Pass**: Reverts uncommitted page modifications in reverse order using logged before-images.
-   - Resilient against partial/torn tail writes in the log.
-5. **Deterministic Crash Injection Testing (`CrashSimulator`)**:
-   - Automated verification across 9 critical crash scenarios (`BeforePageModify`, `AfterLogBeforePageFlush`, `AfterMemoryModify`, `DuringWalWrite`, `DuringPageFlush`, `AfterOnePageFlushed`, `AfterCommitDurableBeforeSuccess`, `DuringRollback`, `DuringRecovery`).
-
----
-
-## Building and Testing (Windows / Cross-Platform)
+## Building and Testing
 
 ### Prerequisites
-- Modern C++20 compiler (Visual Studio 2022/2026 MSVC, Clang 15+, or GCC 12+)
+- Modern ISO C++20 compiler:
+  - Microsoft Visual Studio 2022 / 2026 (MSVC 19.51+)
+  - Clang 15+
+  - GCC 12+
 - CMake 3.20 or newer
 
 ### 1. Configure and Build
+
 ```powershell
-cmake -B build -S .
+# Configure build directory (Release mode)
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+
+# Build database engine library, CLI, and test targets
 cmake --build build --config Release
 ```
 
-### 2. Run the Full Test Suite (All 43 Suites)
+### 2. Run Test Suite (51 / 51 Passing)
+
 ```powershell
+# Execute all 51 automated CTest test suites
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-### 3. Run Benchmarks
-```powershell
-.\build\Release\benchmark_query_optimizer.exe
-.\build\Release\benchmark_wal_lifecycle.exe
-.\build\Release\benchmark_backup_restore.exe
-```
+### Verified Test Suite Breakdown (100% Pass Rate)
 
-### 4. Launch the Interactive SQL Shell
+| Test Category | Target Count | Covered Subsystems |
+|---|---|---|
+| **Storage & Buffer Pool** | 9 Suites | Page serialization, CRC-32, PageFile boundaries, Clock-Pro cache eviction, SlottedPage compaction, RecordManager CRUD, B+ tree splits/merges, Free-Space Map. |
+| **SQL Engine & Parsing** | 4 Suites | Lexical analysis, recursive-descent AST parser, table catalog persistence, SQL execution and constraints. |
+| **Transactions & WAL** | 6 Suites | Monotonic LSNs, hardware flushes, multi-page rollback, 3-pass ARIES recovery, 10 deterministic crash-injection scenarios, multi-row atomicity. |
+| **Query Planner & EXPLAIN** | 4 Suites | Cost-based access path selection, range consolidation, residual filter pushdown, ORDER BY elimination, LIMIT pushdown, EXPLAIN ANALYZE. |
+| **Concurrency & Locking** | 6 Suites | Shared/exclusive table locks, process `.lock` mutual exclusion, multi-threaded buffer pool concurrency, read scaling, write isolation, dirty read avoidance. |
+| **Checkpoint & Integrity** | 6 Suites | Safe checkpoint horizons, active transaction retention, atomic WAL truncation, multi-layer integrity checker, storage corruption detection, lifecycle stress. |
+| **Backup, Restore & Migration** | 8 Suites | Physical snapshot backups, standalone non-destructive verifier, bit-level corruption rejection, atomic staging restore, DAG SQL export, RFC 4180 CSV migration. |
+| **Observability & Fuzzing** | 5 Suites | Atomic metrics registry, query execution profiling, property-based randomized transactions, parser mutation fuzzing, multi-threaded stress testing. |
+| **Release & Public SDK** | 3 Suites | Public C++20 SDK (`test_public_api`), CLI smoke workflow (`test_cli_smoke`), adversarial corruption & recovery idempotence (`test_adversarial`). |
+
+---
+
+## Quick-Start: Interactive CLI
+
+The compiled database CLI (`klyrdb.exe`) provides direct query execution, interactive shell sessions, maintenance operations, and disaster recovery:
+
 ```powershell
+# 1. Launch interactive SQL shell (or create new database)
 .\build\Release\klyrdb.exe sql mydb.kdb
-```
 
-### 5. Execute Crash Recovery via CLI
-```powershell
-.\build\Release\klyrdb.exe recover mydb.kdb
-```
+# 2. Execute direct SQL statements from the command line
+.\build\Release\klyrdb.exe sql mydb.kdb "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE);"
+.\build\Release\klyrdb.exe sql mydb.kdb "INSERT INTO users VALUES (1, 'Ada Lovelace', 'ada@example.com');"
+.\build\Release\klyrdb.exe sql mydb.kdb "INSERT INTO users VALUES (2, 'Alan Turing', 'alan@example.com');"
+.\build\Release\klyrdb.exe sql mydb.kdb "SELECT id, name, email FROM users WHERE id >= 1 ORDER BY id ASC;"
 
-### 6. Execute Database Checkpoint & WAL Truncation
-```powershell
-.\build\Release\klyrdb.exe checkpoint mydb.kdb
-```
-
-### 7. Run Storage & Relational Integrity Verification
-```powershell
+# 3. Inspect physical storage and relational integrity
 .\build\Release\klyrdb.exe integrity-check mydb.kdb
+
+# 4. Perform safe checkpoint and WAL truncation
+.\build\Release\klyrdb.exe checkpoint mydb.kdb
+
+# 5. Create verified physical snapshot backup
+.\build\Release\klyrdb.exe backup mydb.kdb backups/snapshot_01
+
+# 6. Verify backup integrity without restoring
+.\build\Release\klyrdb.exe backup-verify backups/snapshot_01
+
+# 7. Atomically restore backup to a new database
+.\build\Release\klyrdb.exe restore backups/snapshot_01 restored_db.kdb
 ```
 
-### 8. Physical Snapshot Backup & Verification
+---
+
+## Quick-Start: C++20 SDK Public API
+
+KlyrDB provides a public C++20 API via `#include <klyrdb/klyrdb.hpp>`. The example below demonstrates database initialization, transactional mutation with RAII rollback safety, and result iteration:
+
+```cpp
+#include <klyrdb/klyrdb.hpp>
+#include <iostream>
+
+int main() {
+    // 1. Open database (creates file if not present)
+    auto db_res = klyrdb::Database::open("app.kdb");
+    if (!db_res.is_ok()) {
+        std::cerr << "Open failed: " << db_res.status().message() << "\n";
+        return 1;
+    }
+    auto db = std::move(db_res.value());
+
+    // 2. Establish connection session
+    auto conn_res = db->connect();
+    if (!conn_res.is_ok()) {
+        std::cerr << "Connect failed: " << conn_res.status().message() << "\n";
+        return 1;
+    }
+    auto conn = std::move(conn_res.value());
+
+    // 3. Define schema
+    conn->execute("CREATE TABLE products (sku INTEGER PRIMARY KEY, name TEXT, price INTEGER);");
+
+    // 4. Transactional insert with RAII TransactionGuard
+    {
+        klyrdb::TransactionGuard txn(*conn);
+        conn->execute("INSERT INTO products VALUES (101, 'Mechanical Keyboard', 89);");
+        conn->execute("INSERT INTO products VALUES (102, 'Optical Mouse', 39);");
+        
+        // Explicit commit; if an exception or return occurs before this, changes roll back
+        txn.commit();
+    }
+
+    // 5. Query execution and tabular result iteration
+    auto res = conn->execute("SELECT sku, name, price FROM products WHERE price < 50 ORDER BY sku ASC;");
+    if (res.is_ok()) {
+        const auto& result_set = res.value();
+        std::cout << "Matching products (" << result_set.row_count() << "):\n";
+        for (const auto& row : result_set) {
+            std::cout << "  - [" << row["sku"].as_integer() << "] "
+                      << row["name"].as_text() << " : $"
+                      << row["price"].as_integer() << "\n";
+        }
+    }
+
+    db->close();
+    return 0;
+}
+```
+
+---
+
+## Integrating via CMake
+
+Installations of KlyrDB export standard CMake package files (`KlyrDBConfig.cmake`).
+
+### Consumer `CMakeLists.txt`
+```cmake
+cmake_minimum_required(VERSION 3.20)
+project(my_klyrdb_app LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Locate installed KlyrDB package
+find_package(KlyrDB REQUIRED)
+
+# Link against the exported interface
+add_executable(my_klyrdb_app main.cpp)
+target_link_libraries(my_klyrdb_app PRIVATE KlyrDB::KlyrDB)
+```
+
+### Configuring Consumer Applications
+If KlyrDB was unpacked or installed to a custom location, specify `CMAKE_PREFIX_PATH`:
 ```powershell
-# Create self-contained physical backup
-.\build\Release\klyrdb.exe backup mydb.kdb backups/mydb_bak
-
-# Verify backup without touching database
-.\build\Release\klyrdb.exe backup-verify backups/mydb_bak
+cmake -B build -S . -DCMAKE_PREFIX_PATH="C:/opt/klyrdb" -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release
 ```
 
-### 9. Disaster Recovery & Physical Restore
+---
+
+## Empirical Performance Benchmarks
+
+The benchmark suite (`benchmarks/benchmark_reliability.cpp`) executes against persistent disk storage with active WAL logging. Durations are measured using `std::chrono::steady_clock`.
+
+### Reproduction Command
 ```powershell
-# Restore to fresh destination
-.\build\Release\klyrdb.exe restore backups/mydb_bak restored.kdb
-
-# Force overwrite existing destination
-.\build\Release\klyrdb.exe restore backups/mydb_bak mydb.kdb --force
+.\build\Release\benchmark_reliability.exe
 ```
 
-### 10. Logical SQL Export & Import
+### Measured Performance Profile
+
+| Workload Operation | Sample Size | Throughput (ops/sec) | P50 Latency | P95 Latency | P99 Latency | Buffer Hit % |
+|---|---|---|---|---|---|---|
+| **Sequential Inserts** | 1,000 txns | ~630 – 680 | $1.28\text{ ms}$ | $2.65\text{ ms}$ | $4.21\text{ ms}$ | 99.41% |
+| **PK Point Seeks** | 1,000 queries | ~815 – 885 | $0.91\text{ ms}$ | $1.91\text{ ms}$ | $2.91\text{ ms}$ | 99.92% |
+| **Index Range Scans** | 500 scans | ~420 – 480 | $1.78\text{ ms}$ | $3.48\text{ ms}$ | $4.00\text{ ms}$ | 99.95% |
+| **Point Updates** | 1,000 txns | ~500 – 640 | $1.43\text{ ms}$ | $2.59\text{ ms}$ | $3.63\text{ ms}$ | 99.95% |
+| **Full Table ANALYZE** | Complete scan | — | $18.57\text{ ms}$ | — | — | 100.0% |
+
+> [!NOTE]
+> **Methodology & Reproduction Caveats:** Measurements were gathered on Windows 11 x64, MSVC 19.51, using a 64-frame buffer pool cache on a local NVMe SSD. In un-optimized Debug builds, median latency is slightly higher due to runtime assertions. Throughput includes full slotted-page tuple serialization, B+ tree leaf traversal, page latching, and WAL record generation.
+
+---
+
+## Platform & Compiler Support
+
+| Platform / Operating System | Compiler Toolchain | Verification Status | Notes |
+|---|---|---|---|
+| **Windows 11 x64** | MSVC 19.51 (Visual Studio 2022/2026 BuildTools) | **Tested & Verified** | Primary release target. Uses `LockFileEx` for process exclusivity and `FlushFileBuffers` for hardware synchronization. |
+| **Linux x64 (Ubuntu 22.04 LTS)** | GCC 12+ / Clang 15+ | **Portable / Intended** | Pure ISO C++20 codebase using POSIX `fcntl` and `fsync`. Validated in CI workflow (`.github/workflows/ci.yml`). |
+
+---
+
+## Release Verification & Distribution
+
+Pre-built Windows x64 distribution packages are verified for external consumer compilation:
+
+- **Release Archive:** `dist/klyrdb-0.12.0-windows-x64.zip`
+- **Expected SHA-256:** `58CF6568E9FB5DF8B37A865651A5E99218EDE451F3A9523689878DD4A1242DEA`
+- **Verification Report:** [docs/phase-13b-release-verification.md](docs/phase-13b-release-verification.md)
+- **Historical Audit:** [docs/phase-13a-release-verification.md](docs/phase-13a-release-verification.md)
+- **Release Notes:** [docs/release-notes-v0.12.0.md](docs/release-notes-v0.12.0.md)
+
+### Verifying Checksum (PowerShell)
 ```powershell
-# Export complete schema and data in topological order
-.\build\Release\klyrdb.exe dump mydb.kdb dump.sql
-
-# Import SQL dump into target database
-.\build\Release\klyrdb.exe import dump.sql imported.kdb
+Get-FileHash -Path dist\klyrdb-0.12.0-windows-x64.zip -Algorithm SHA256
 ```
 
-### 11. RFC 4180 CSV Migration
-```powershell
-# Export table to CSV
-.\build\Release\klyrdb.exe export-csv mydb.kdb accounts accounts.csv
-
-# Import CSV into existing table
-.\build\Release\klyrdb.exe import-csv accounts.csv mydb.kdb accounts
+### Verifying Checksum (Linux / bash)
+```bash
+sha256sum -c dist/klyrdb-0.12.0-windows-x64.zip.sha256
 ```
+
+---
+
+## Documentation Index
+
+Detailed architectural specifications, subsystem designs, and verification reports are available in the [`docs/`](docs/) directory:
+
+- **Storage & Architecture:**
+  - [Architecture Overview](docs/architecture.md) — System layer breakdown and dependency flow.
+  - [Storage Format Specification](docs/storage-format.md) — Binary page headers, magic signatures, and geometry.
+  - [Slotted Pages](docs/slotted-pages.md) — Slotted page format, slot arrays, and compaction.
+  - [Buffer Pool Manager](docs/buffer-pool.md) — Clock-Pro replacement policy and RAII PageGuard design.
+  - [Record Manager](docs/record-manager.md) — Variable-length tuple serialization and RecordId lifecycle.
+  - [Free-Space Map](docs/free-space-map.md) — Page capacity tracking and allocation mechanics.
+  - [B+ Tree Indexing](docs/bplus-tree.md) — Persistent B+ tree node format, split/merge logic, and iterators.
+- **Relational Engine & SQL:**
+  - [SQL Engine](docs/sql-engine.md) — Lexer, AST nodes, recursive-descent parser, and execution dispatch.
+  - [Table Catalog](docs/table-catalog.md) — Persistent schema catalogs and column metadata.
+  - [Constraints](docs/constraints.md) — Primary key, foreign key, unique, check, and null semantics.
+  - [Query Planner](docs/query-planner.md) — Cost model formulas, access paths, and optimization rules.
+  - [Query Profiling & EXPLAIN](docs/explain.md) — `EXPLAIN` and `EXPLAIN ANALYZE` syntax and execution profiling.
+- **Transactions, WAL & Durability:**
+  - [Transactions](docs/transactions.md) — ACID state machines, before-image logging, and rollback mechanics.
+  - [Write-Ahead Logging](docs/wal.md) — WAL record format, monotonic LSN sequencing, and CRC validation.
+  - [Crash Recovery](docs/recovery.md) — ARIES 3-pass recovery, analysis horizon, redo, and undo passes.
+  - [Checkpointing](docs/checkpointing.md) — Safe checkpoint boundaries, dirty page flushes, and WAL truncation.
+  - [Integrity Checking](docs/integrity-check.md) — Non-destructive storage and relational validation checks.
+- **Disaster Recovery & Data Migration:**
+  - [Physical Backup](docs/physical-backup.md) — Coordinated snapshot backup mechanics and locking.
+  - [Disaster Restore](docs/restore.md) — Atomic staging restore, validation, and directory swapping.
+  - [Backup Format](docs/backup-format.md) — `manifest.json` schema and component checksum verification.
+  - [Logical Export & Import](docs/logical-export-import.md) — DAG topological SQL export and RFC 4180 CSV migration.
+- **Developer Guide & Release Engineering:**
+  - [Public C++ API Reference](docs/public-api.md) — Detailed guide to `<klyrdb/klyrdb.hpp>` classes.
+  - [CMake Integration](docs/cmake-integration.md) — Downstream consumer integration instructions.
+  - [Building from Source](docs/building.md) — Compiler setup, presets, and platform requirements.
+  - [Known Limitations](docs/known-limitations.md) — Explicit engine boundaries and unsupported SQL features.
+  - [Release Notes v0.12.0](docs/release-notes-v0.12.0.md) — Release Candidate v0.12.0 changelog and verified assets.
+
+---
+
+## License
+
+No open-source license is currently assigned to this repository. For inquiries regarding licensing, evaluation, or educational use, please contact the repository maintainer.
