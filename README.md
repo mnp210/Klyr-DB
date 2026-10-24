@@ -205,6 +205,14 @@ The compiled database CLI (`klyrdb.exe`) provides direct query execution, intera
 .\build\Release\klyrdb.exe restore backups/snapshot_01 restored_db.kdb
 ```
 
+### Automated Portfolio Demonstration
+
+A reproducible, automated demonstration walking through table creation, indexing, `EXPLAIN ANALYZE`, transaction rollback/commit, cross-process persistence, and storage integrity audits is provided in [`demos/portfolio/`](demos/portfolio/):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File demos/portfolio/run_demo.ps1
+```
+
 ---
 
 ## Quick-Start: C++20 SDK Public API
@@ -333,6 +341,7 @@ Pre-built Windows x64 distribution packages are verified for external consumer c
 
 - **Release Archive:** `dist/klyrdb-0.12.0-windows-x64.zip`
 - **Expected SHA-256:** `58CF6568E9FB5DF8B37A865651A5E99218EDE451F3A9523689878DD4A1242DEA`
+- **Technical Audit:** [docs/technical-audit-v0.12.0.md](docs/technical-audit-v0.12.0.md)
 - **Artifact Audit:** [docs/release-artifact-audit-v0.12.0.md](docs/release-artifact-audit-v0.12.0.md)
 - **Inventory Reconciliation:** [docs/release-inventory-reconciliation.md](docs/release-inventory-reconciliation.md)
 - **Verification Report:** [docs/phase-13b-release-verification.md](docs/phase-13b-release-verification.md)
@@ -386,6 +395,9 @@ Detailed architectural specifications, subsystem designs, and verification repor
   - [Building from Source](docs/building.md) — Compiler setup, presets, and platform requirements.
   - [Known Limitations](docs/known-limitations.md) — Explicit engine boundaries and unsupported SQL features.
   - [Release Notes v0.12.0](docs/release-notes-v0.12.0.md) — Release Candidate v0.12.0 changelog and verified assets.
+  - [Technical Audit v0.12.0](docs/technical-audit-v0.12.0.md) — Independent technical audit, subsystem classification, and regression verification.
+  - [Portfolio Demo Verification](docs/portfolio-demo-verification.md) — Automated portfolio demonstration evidence, output capture, and proof boundaries.
+  - [Portfolio Demo Guide](demos/portfolio/README.md) — Step-by-step runner instructions and screencast cue sheet.
   - [Release Artifact Audit v0.12.0](docs/release-artifact-audit-v0.12.0.md) — Independent distribution package audit and consumer verification.
   - [Release Inventory Reconciliation](docs/release-inventory-reconciliation.md) — Discrepancy analysis and entry-by-entry verification of distribution archive.
 
