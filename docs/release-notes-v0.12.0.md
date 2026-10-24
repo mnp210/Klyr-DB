@@ -2,7 +2,7 @@
 
 **Release Tag:** `v0.12.0` (Release Candidate)  
 **Release Date:** 2026-10-24  
-**Git Commit:** `ab34daa73596ece6b22e8b395c58488d56feebb5`  
+**Target Commit:** `f769729` (Source & packaging baseline: `ab34daa73596ece6b22e8b395c58488d56feebb5`)  
 **Distribution Archive:** `klyrdb-0.12.0-windows-x64.zip`  
 **SHA-256 Checksum:** `58CF6568E9FB5DF8B37A865651A5E99218EDE451F3A9523689878DD4A1242DEA`  
 **Status:** Pre-1.0 Experimental / Educational Embedded Relational Database Engine  
