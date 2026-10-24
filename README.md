@@ -333,6 +333,8 @@ Pre-built Windows x64 distribution packages are verified for external consumer c
 
 - **Release Archive:** `dist/klyrdb-0.12.0-windows-x64.zip`
 - **Expected SHA-256:** `58CF6568E9FB5DF8B37A865651A5E99218EDE451F3A9523689878DD4A1242DEA`
+- **Artifact Audit:** [docs/release-artifact-audit-v0.12.0.md](docs/release-artifact-audit-v0.12.0.md)
+- **Inventory Reconciliation:** [docs/release-inventory-reconciliation.md](docs/release-inventory-reconciliation.md)
 - **Verification Report:** [docs/phase-13b-release-verification.md](docs/phase-13b-release-verification.md)
 - **Historical Audit:** [docs/phase-13a-release-verification.md](docs/phase-13a-release-verification.md)
 - **Release Notes:** [docs/release-notes-v0.12.0.md](docs/release-notes-v0.12.0.md)
@@ -384,6 +386,8 @@ Detailed architectural specifications, subsystem designs, and verification repor
   - [Building from Source](docs/building.md) — Compiler setup, presets, and platform requirements.
   - [Known Limitations](docs/known-limitations.md) — Explicit engine boundaries and unsupported SQL features.
   - [Release Notes v0.12.0](docs/release-notes-v0.12.0.md) — Release Candidate v0.12.0 changelog and verified assets.
+  - [Release Artifact Audit v0.12.0](docs/release-artifact-audit-v0.12.0.md) — Independent distribution package audit and consumer verification.
+  - [Release Inventory Reconciliation](docs/release-inventory-reconciliation.md) — Discrepancy analysis and entry-by-entry verification of distribution archive.
 
 ---
 
