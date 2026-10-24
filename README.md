@@ -400,6 +400,7 @@ Detailed architectural specifications, subsystem designs, and verification repor
   - [Portfolio Demo Guide](demos/portfolio/README.md) — Step-by-step runner instructions and screencast cue sheet.
   - [Release Artifact Audit v0.12.0](docs/release-artifact-audit-v0.12.0.md) — Independent distribution package audit and consumer verification.
   - [Release Inventory Reconciliation](docs/release-inventory-reconciliation.md) — Discrepancy analysis and entry-by-entry verification of distribution archive.
+  - [Final Release Audit v0.12.0](docs/final-release-audit-v0.12.0.md) — Final end-to-end repository, portfolio readiness, and release verification audit.
 
 ---
 
