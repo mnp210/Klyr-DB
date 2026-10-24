@@ -1,0 +1,26 @@
+name: KlyrDB Extended Reliability & Stress Tests
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # Nightly at 2:00 AM UTC
+  workflow_dispatch:
+
+jobs:
+  reliability-stress:
+    name: Extended Concurrency & Reliability Stress
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure CMake
+        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+
+      - name: Build KlyrDB & Benchmarks
+        run: cmake --build build --config Release
+
+      - name: Run Full CTest Suite
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Run Reliability Benchmarks
+        run: ./build/Release/benchmark_reliability.exe

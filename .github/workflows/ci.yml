@@ -1,0 +1,109 @@
+name: KlyrDB CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.os }} - ${{ matrix.compiler }} - ${{ matrix.build_type }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            compiler: msvc
+            build_type: Release
+          - os: windows-latest
+            compiler: msvc
+            build_type: Debug
+          - os: ubuntu-22.04
+            compiler: gcc-12
+            build_type: Release
+          - os: ubuntu-22.04
+            compiler: clang-15
+            build_type: Release
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Linux Compiler
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          if [ "${{ matrix.compiler }}" = "gcc-12" ]; then
+            sudo apt-get install -y g++-12
+            echo "CXX=g++-12" >> $GITHUB_ENV
+            echo "CC=gcc-12" >> $GITHUB_ENV
+          elif [ "${{ matrix.compiler }}" = "clang-15" ]; then
+            sudo apt-get install -y clang-15
+            echo "CXX=clang++-15" >> $GITHUB_ENV
+            echo "CC=clang-15" >> $GITHUB_ENV
+          fi
+
+      - name: Configure CMake
+        run: >
+          cmake -B build -S .
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DBUILD_TESTING=ON
+
+      - name: Build KlyrDB
+        run: cmake --build build --config ${{ matrix.build_type }}
+
+      - name: Run Test Suite (CTest)
+        run: ctest --test-dir build -C ${{ matrix.build_type }} --output-on-failure
+
+      - name: Install KlyrDB to Local Prefix
+        run: cmake --install build --config ${{ matrix.build_type }} --prefix ${{ runner.temp }}/klyrdb_install
+
+      - name: Configure & Build External Consumer (basic_cpp_app)
+        run: >
+          cmake -B examples/basic_cpp_app/build -S examples/basic_cpp_app
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DCMAKE_PREFIX_PATH="${{ runner.temp }}/klyrdb_install"
+      
+      - name: Build External Consumer (basic_cpp_app)
+        run: cmake --build examples/basic_cpp_app/build --config ${{ matrix.build_type }}
+
+      - name: Execute External Consumer (basic_cpp_app)
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            ./examples/basic_cpp_app/build/${{ matrix.build_type }}/basic_cpp_app.exe
+          else
+            ./examples/basic_cpp_app/build/basic_cpp_app
+          fi
+        shell: bash
+
+      - name: Configure & Build Transactions/Constraints Consumer
+        run: >
+          cmake -B examples/transactions_and_constraints/build -S examples/transactions_and_constraints
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DCMAKE_PREFIX_PATH="${{ runner.temp }}/klyrdb_install"
+
+      - name: Build Transactions/Constraints Consumer
+        run: cmake --build examples/transactions_and_constraints/build --config ${{ matrix.build_type }}
+
+      - name: Execute Transactions/Constraints Consumer
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            ./examples/transactions_and_constraints/build/${{ matrix.build_type }}/transactions_and_constraints.exe
+          else
+            ./examples/transactions_and_constraints/build/transactions_and_constraints
+          fi
+        shell: bash
+
+      - name: CLI Smoke Test (Version & Help)
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            ./build/${{ matrix.build_type }}/klyrdb.exe --version
+            ./build/${{ matrix.build_type }}/klyrdb.exe --help
+          else
+            ./build/klyrdb --version
+            ./build/klyrdb --help
+          fi
+        shell: bash

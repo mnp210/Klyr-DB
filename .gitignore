@@ -1,0 +1,38 @@
+# Build directories
+build/
+build_*/
+dist/
+bin/
+lib/
+out/
+.cache/
+examples/**/build/
+
+# Visual Studio / MSVC artifacts
+.vs/
+*.sln
+*.vcxproj*
+*.user
+*.suo
+x64/
+Debug/
+Release/
+*.dir/
+
+# CMake artifacts
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+
+# Test output database files
+*.kdb
+*.db
+*.wal
+*.lock
+*.tmp
+test_*.kdb
+demo.kdb
+scratch/
+*_prompt.txt
+*.prompt

@@ -1,0 +1,11 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/KlyrDBTargets.cmake")
+
+# Provide KlyrDB::KlyrDB alias pointing to KlyrDB::klyrdb_storage
+if(TARGET KlyrDB::klyrdb_storage AND NOT TARGET KlyrDB::KlyrDB)
+    add_library(KlyrDB::KlyrDB INTERFACE IMPORTED)
+    target_link_libraries(KlyrDB::KlyrDB INTERFACE KlyrDB::klyrdb_storage)
+endif()
+
+check_required_components(KlyrDB)
