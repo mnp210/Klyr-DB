@@ -7,6 +7,19 @@ A persistent, embedded SQL relational database engine implemented from scratch i
 
 ---
 
+## About KlyrDB
+
+KlyrDB is an experimental embedded relational database engine written in C++20, developed as an individual software engineering project presented under the personal project brand **Vantaeon Studios**.
+
+- **Author:** mnp210
+- **Project Brand:** Vantaeon Studios (personal project brand; not a registered corporation, company, partnership, or separate legal entity)
+- **Status:** Experimental, pre-1.0
+- **License:** Source-available; all rights reserved. See [LICENSE.txt](LICENSE.txt).
+
+KlyrDB is an independent portfolio and systems-engineering project. Its source is available for inspection and evaluation under the terms specified in the accompanying license. Public visibility does not grant general permission to reuse, modify, or redistribute the project.
+
+---
+
 ## Architecture
 
 KlyrDB follows a layered, modular architecture inspired by classical database systems engineering:
@@ -404,6 +417,11 @@ Detailed architectural specifications, subsystem designs, and verification repor
 
 ---
 
-## License
+## License and Terms of Use
 
-No open-source license is currently assigned to this repository. For inquiries regarding licensing, evaluation, or educational use, please contact the repository maintainer.
+This project is an individual software engineering project created and authored by **mnp210**, presented under the personal project brand **Vantaeon Studios** (not a registered corporation, company, partnership, or separate legal entity). All rights are reserved by the author.
+
+- **Permitted Evaluation:** Viewing, reading, and inspecting the source code and documentation for personal inspection, educational evaluation, architectural review, and recruitment review is permitted under [LICENSE.txt](LICENSE.txt). Downloading and compiling a local copy is permitted solely for the evaluation purposes and subject to the restrictions specified in that license.
+- **No General Reuse or Redistribution:** This project is **not** open-source software under the Open Source Initiative (OSI) definition. No license is granted to copy, modify, distribute, sublicense, or use this code or its compiled binaries in commercial products or separate software projects without prior written permission from the author.
+- **Full Terms:** See [LICENSE.txt](LICENSE.txt) for the complete source-available evaluation terms, restrictions, and legal qualifications.
+- For licensing inquiries or permission requests, please contact the author (`mnp210`) through the repository or GitHub profile.

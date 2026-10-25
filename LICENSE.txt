@@ -1,0 +1,82 @@
+Copyright (c) 2026 mnp210. All rights reserved.
+
+SOURCE-AVAILABLE PORTFOLIO EVALUATION LICENSE
+
+This software, source code, documentation, and associated project files (collectively,
+the "Software") are an individual software engineering project created and authored by
+mnp210 and presented under the personal project brand Vantaeon Studios.
+
+Vantaeon Studios is a personal project brand and is not a registered corporation,
+company, partnership, or separate legal entity. All copyright, title, and intellectual
+property rights in and to the Software are retained exclusively by the author (mnp210).
+
+The Software is made available solely for personal inspection, educational evaluation,
+architectural review, and recruitment review as a technical portfolio project.
+
+1. PERMITTED EVALUATION USE
+   Subject to the terms and restrictions of this document, you are granted a non-exclusive,
+   non-transferable, royalty-free, limited permission to:
+   (a) View, read, and inspect the source code and documentation.
+   (b) Download and compile a local copy solely for personal evaluation, non-commercial
+       architectural analysis, educational evaluation, and recruitment review.
+
+2. RESTRICTIONS
+   Except as explicitly granted in Section 1, all rights are reserved by the author.
+   You may NOT:
+   (a) Copy, modify, adapt, translate, or create derivative works of any part of the
+       Software, except as strictly necessary to compile it locally for personal evaluation.
+   (b) Decompile, disassemble, or reverse-engineer binary outputs or components of
+       the Software, except to the extent such restrictions are prohibited by applicable
+       law or cannot lawfully be waived or limited by contract. Nothing in this license
+       is intended to restrict rights that applicable law does not permit the author
+       to restrict.
+   (c) Distribute, publish, host, mirror, sublicense, sell, rent, lease, or otherwise
+       transfer the Software or any portion thereof to any third party.
+   (d) Use the Software or any portion thereof in any commercial application, product,
+       service, or external software repository.
+   (e) Remove, alter, or obscure any copyright notices, proprietary markings, or this
+       license document.
+
+3. NOT OPEN-SOURCE SOFTWARE
+   The Software is source-available for portfolio evaluation purposes only. It is NOT
+   open-source software under the Open Source Initiative (OSI) Open Source Definition,
+   and it is NOT licensed under any permissive or copyleft open-source license (such as
+   MIT, Apache 2.0, BSD, or GPL). Future or current public visibility of this repository
+   does not grant general rights to copy, modify, redistribute, or commercially exploit
+   the Software. While platform hosting (such as GitHub) provides technical mechanisms to
+   view or fork public repositories, such platform mechanics do not constitute an expanded
+   legal grant or waiver of the author's copyright. The author retains all rights except
+   where expressly granted or where applicable law provides otherwise.
+
+4. PRE-COMPILED BINARIES AND RELEASE ASSETS
+   Pre-compiled release packages, executables (including the klyrdb CLI), static libraries
+   (klyrdb_storage), archives, and associated release assets provided under this repository
+   are subject to these same source-available evaluation restrictions. Release assets are
+   provided solely for evaluation and architectural demonstration, and do not grant general
+   redistribution, sublicensing, or commercial deployment rights.
+
+5. SEPARATION OF THIRD-PARTY AND RUNTIME LICENSING
+   Based on repository configuration and build manifests, the Software source code is
+   self-contained and includes no bundled third-party open-source libraries. Standard C++
+   runtime libraries, compiler runtimes, and host operating system platform interfaces
+   linked by compiled binaries (such as Microsoft Visual C++ runtime components or Linux
+   libstdc++) remain subject to their respective vendor licenses and runtime exception
+   terms. This license does not purport to alter, supersede, or override any third-party
+   or vendor runtime terms.
+
+6. NO WARRANTY AND LIMITATION OF LIABILITY
+   SUBJECT TO APPLICABLE LAW, THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+   ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. TO THE
+   MAXIMUM EXTENT PERMITTED BY LAW, IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+   CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR
+   OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+   OTHER DEALINGS IN THE SOFTWARE. NOTHING IN THIS SECTION PURPORTS TO EXCLUDE OR
+   LIMIT LIABILITY THAT CANNOT LAWFULLY BE EXCLUDED OR LIMITED UNDER APPLICABLE LAW.
+
+7. JURISDICTION, SEVERABILITY, AND ENFORCEABILITY
+   This document represents a bespoke source-available evaluation license. No representation
+   or guarantee is made that every provision of this license is enforceable in every
+   jurisdiction. If any provision of this document is held to be invalid, illegal, or
+   unenforceable under applicable law, such provision shall be enforced to the maximum extent
+   permissible, and the remaining provisions shall remain in full force and effect.
