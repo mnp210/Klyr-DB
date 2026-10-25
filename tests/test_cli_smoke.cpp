@@ -19,6 +19,9 @@ static std::string find_klyrdb_executable() {
         "../../../Debug/klyrdb.exe",
         "../Release/klyrdb.exe",
         "../../Release/klyrdb.exe",
+        "../klyrdb",
+        "../../klyrdb",
+        "../../../klyrdb",
         "klyrdb.exe",
         "klyrdb"
     };

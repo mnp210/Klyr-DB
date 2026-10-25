@@ -114,18 +114,13 @@ Status ProcessFileLock::try_lock(ProcessLockMode mode) {
         }
     }
 
-    struct flock fl{};
-    fl.l_type = (mode == ProcessLockMode::Exclusive) ? F_WRLCK : F_RDLCK;
-    fl.l_whence = SEEK_SET;
-    fl.l_start = 0;
-    fl.l_len = 1;
-
-    int res = fcntl(fd_, F_SETLK, &fl);
+    int op = (mode == ProcessLockMode::Exclusive) ? (LOCK_EX | LOCK_NB) : (LOCK_SH | LOCK_NB);
+    int res = flock(fd_, op);
     if (res < 0) {
-        if (errno == EACCES || errno == EAGAIN) {
+        if (errno == EACCES || errno == EAGAIN || errno == EWOULDBLOCK) {
             return Status::database_busy("Database lock held by another process: " + lock_path_.string());
         }
-        return Status::io_error("fcntl lock failed with errno " + std::to_string(errno));
+        return Status::io_error("flock lock failed with errno " + std::to_string(errno));
     }
 #endif
 
@@ -174,12 +169,7 @@ Status ProcessFileLock::unlock() {
     }
 #else
     if (fd_ >= 0) {
-        struct flock fl{};
-        fl.l_type = F_UNLCK;
-        fl.l_whence = SEEK_SET;
-        fl.l_start = 0;
-        fl.l_len = 1;
-        fcntl(fd_, F_SETLK, &fl);
+        flock(fd_, LOCK_UN);
         close(fd_);
         fd_ = -1;
     }
