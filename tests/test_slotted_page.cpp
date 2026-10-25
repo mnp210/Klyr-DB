@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <numeric>
+#include <cstring>
 
 using namespace klyrdb;
 using namespace klyrdb::testing;

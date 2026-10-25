@@ -2,6 +2,7 @@
 #include "klyrdb/storage/page_file.hpp"
 #include "klyrdb/storage/page.hpp"
 #include <fstream>
+#include <vector>
 
 using namespace klyrdb;
 using namespace klyrdb::testing;

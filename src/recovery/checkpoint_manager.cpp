@@ -6,6 +6,7 @@
 #include "klyrdb/diagnostics/metrics.hpp"
 #include <chrono>
 #include <algorithm>
+#include <optional>
 
 namespace klyrdb {
 
