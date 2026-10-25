@@ -147,7 +147,7 @@ struct IndexEntry {
     IndexKey key;
     RecordId rid;
 
-    constexpr IndexEntry() noexcept = default;
+    IndexEntry() noexcept = default;
     IndexEntry(IndexKey k, RecordId r) noexcept : key(std::move(k)), rid(r) {}
 
     bool operator==(const IndexEntry& other) const noexcept {
