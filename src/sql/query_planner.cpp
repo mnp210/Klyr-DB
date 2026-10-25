@@ -3,6 +3,7 @@
 #include "klyrdb/storage/page_constants.hpp"
 #include "klyrdb/catalog/table_statistics.hpp"
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <unordered_set>
 
