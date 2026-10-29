@@ -48,8 +48,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "D:\KlyrDB\demos\portfolio\r
                 KLYRDB v0.12.0 PORTFOLIO DEMONSTRATION                
 ======================================================================
 CLI Executable: D:\KlyrDB\build_audit_release\Release\klyrdb.exe
-Workspace:      C:\Users\lnami\AppData\Local\Temp\klyrdb_portfolio_demo_ee4cb48c5c454bf6979152ef55f92cda
-Database File:  C:\Users\lnami\AppData\Local\Temp\klyrdb_portfolio_demo_ee4cb48c5c454bf6979152ef55f92cda\portfolio.kdb
+Workspace:      %TEMP%\klyrdb_portfolio_demo_ee4cb48c5c454bf6979152ef55f92cda
+Database File:  %TEMP%\klyrdb_portfolio_demo_ee4cb48c5c454bf6979152ef55f92cda\portfolio.kdb
 
 [Step 1/7] Engine Version & Architecture Information:
 KlyrDB version 0.12.0

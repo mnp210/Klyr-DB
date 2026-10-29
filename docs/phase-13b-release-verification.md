@@ -128,24 +128,24 @@ A programmatic audit of `dist/klyrdb-0.12.0-windows-x64.zip` confirmed all essen
 ## 5. Clean External Consumer Verification
 
 The regenerated archive was extracted to an isolated directory outside `D:\KlyrDB`:
-`C:\Users\lnami\AppData\Local\Temp\klyrdb_phase13b_test`
+`%TEMP%\klyrdb_phase13b_test`
 
 ### 5.1 Supplied Consumer 1: `basic_cpp_app`
 - **Source:** Extracted `examples/basic_cpp_app`
-- **Configuration:** CMake with `-DCMAKE_PREFIX_PATH="C:/Users/lnami/AppData/Local/Temp/klyrdb_phase13b_test"`
+- **Configuration:** CMake with `-DCMAKE_PREFIX_PATH="%TEMP%/klyrdb_phase13b_test"`
 - **Result:** Configured and compiled in Release mode without warnings.
 - **Execution:** Successfully performed database creation, table DDL, row insertions, `SELECT` queries, intentional error handling, rollback, commit via `TransactionGuard`, closure, and cross-session persistence verification across 4 rows.
 - **Verdict:** **PASS**
 
 ### 5.2 Supplied Consumer 2: `transactions_and_constraints`
 - **Source:** Extracted `examples/transactions_and_constraints`
-- **Configuration:** CMake with `-DCMAKE_PREFIX_PATH="C:/Users/lnami/AppData/Local/Temp/klyrdb_phase13b_test"`
+- **Configuration:** CMake with `-DCMAKE_PREFIX_PATH="%TEMP%/klyrdb_phase13b_test"`
 - **Result:** Configured and compiled cleanly.
 - **Execution:** Successfully enforced duplicate `PRIMARY KEY` rejection, `NOT NULL` constraint rejection, `UNIQUE` constraint rejection, automatic rollback on violation via `TransactionGuard`, and post-rollback storage integrity verification.
 - **Verdict:** **PASS**
 
 ### 5.3 Independent Consumer App (`phase13b_indep_app`)
-A third, independent consumer application was authored in a separate directory (`C:\Users\lnami\AppData\Local\Temp\phase13b_independent_consumer`):
+A third, independent consumer application was authored in a separate directory (`%TEMP%\phase13b_independent_consumer`):
 ```cmake
 cmake_minimum_required(VERSION 3.20)
 project(phase13b_indep_app LANGUAGES CXX)

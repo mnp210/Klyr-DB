@@ -93,19 +93,19 @@ Total entries in archive: 314 entries.
 ## 3. Clean External Consumer Verification
 
 The release archive was extracted to an external temporary directory completely separate from the repository:
-`C:\Users\lnami\AppData\Local\Temp\klyrdb_ext_test`
+`%TEMP%\klyrdb_ext_test`
 
 ### 3.1 Distributed Consumer Example 1: `basic_cpp_app`
 
-- **Build Directory:** `C:\Users\lnami\AppData\Local\Temp\build_consumer_basic`
+- **Build Directory:** `%TEMP%\build_consumer_basic`
 - **Configure Command:**
   ```powershell
-  cmake -B "C:/Users/lnami/AppData/Local/Temp/build_consumer_basic" -S "C:/Users/lnami/AppData/Local/Temp/klyrdb_ext_test/examples/basic_cpp_app" -DCMAKE_PREFIX_PATH="C:/Users/lnami/AppData/Local/Temp/klyrdb_ext_test" -DCMAKE_BUILD_TYPE=Release
+  cmake -B "%TEMP%/build_consumer_basic" -S "%TEMP%/klyrdb_ext_test/examples/basic_cpp_app" -DCMAKE_PREFIX_PATH="%TEMP%/klyrdb_ext_test" -DCMAKE_BUILD_TYPE=Release
   ```
   *Exit code: 0*
 - **Build Command:**
   ```powershell
-  cmake --build "C:/Users/lnami/AppData/Local/Temp/build_consumer_basic" --config Release
+  cmake --build "%TEMP%/build_consumer_basic" --config Release
   ```
   *Exit code: 0*
 - **Execution Output:**
@@ -125,15 +125,15 @@ The release archive was extracted to an external temporary directory completely 
 
 ### 3.2 Distributed Consumer Example 2: `transactions_and_constraints`
 
-- **Build Directory:** `C:\Users\lnami\AppData\Local\Temp\build_consumer_txns`
+- **Build Directory:** `%TEMP%\build_consumer_txns`
 - **Configure Command:**
   ```powershell
-  cmake -B "C:/Users/lnami/AppData/Local/Temp/build_consumer_txns" -S "C:/Users/lnami/AppData/Local/Temp/klyrdb_ext_test/examples/transactions_and_constraints" -DCMAKE_PREFIX_PATH="C:/Users/lnami/AppData/Local/Temp/klyrdb_ext_test"
+  cmake -B "%TEMP%/build_consumer_txns" -S "%TEMP%/klyrdb_ext_test/examples/transactions_and_constraints" -DCMAKE_PREFIX_PATH="%TEMP%/klyrdb_ext_test"
   ```
   *Exit code: 0*
 - **Build Command:**
   ```powershell
-  cmake --build "C:/Users/lnami/AppData/Local/Temp/build_consumer_txns" --config Release
+  cmake --build "%TEMP%/build_consumer_txns" --config Release
   ```
   *Exit code: 0*
 - **Execution Output:**
@@ -151,7 +151,7 @@ The release archive was extracted to an external temporary directory completely 
 
 ### 3.3 Custom Independent Consumer Test (`IndependentConsumerApp`)
 
-A clean standalone project was created in `C:\Users\lnami\AppData\Local\Temp\independent_consumer_app`:
+A clean standalone project was created in `%TEMP%\independent_consumer_app`:
 - Calling `find_package(KlyrDB REQUIRED)`
 - Linking strictly to `KlyrDB::KlyrDB`
 - Creating fresh database `indep_test.kdb`
@@ -179,11 +179,11 @@ Exit Code: 0
 
 The generated MSBuild project files (`basic_cpp_app.vcxproj`, `transactions_and_constraints.vcxproj`, `indep_app.vcxproj`) were grepped for repository paths:
 ```powershell
-Select-String -Path "C:/Users/lnami/AppData/Local/Temp/build_independent_consumer/indep_app.vcxproj" -Pattern "D:[\\/]KlyrDB"
+Select-String -Path "%TEMP%/build_independent_consumer/indep_app.vcxproj" -Pattern "D:[\\/]KlyrDB"
 ```
 - **Matches Found:** `0` (Zero references to `D:\KlyrDB`).
-- **Include Paths:** Point strictly to `C:\Users\lnami\AppData\Local\Temp\klyrdb_ext_test\include`.
-- **Link Libraries:** Points strictly to `C:\Users\lnami\AppData\Local\Temp\klyrdb_ext_test\lib\klyrdb_storage.lib`.
+- **Include Paths:** Point strictly to `%TEMP%\klyrdb_ext_test\include`.
+- **Link Libraries:** Points strictly to `%TEMP%\klyrdb_ext_test\lib\klyrdb_storage.lib`.
 
 ---
 
