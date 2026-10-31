@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/klyrdb-banner.png" alt="KlyrDB — Embedded SQL Relational Database Engine" width="100%" />
+</p>
+
 # KlyrDB
 
 A persistent, embedded SQL relational database engine implemented from scratch in standard ISO C++20, featuring fixed 4096-byte slotted-page storage, B+ tree indexing, ARIES-style crash recovery, a cost-based query planner, relational constraints, physical snapshot backup & atomic restore, and a modern C++ developer SDK.
