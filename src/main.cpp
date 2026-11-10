@@ -27,12 +27,90 @@
 #include <string>
 #include <string_view>
 #include <filesystem>
+#include <vector>
+
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 namespace {
 
+#ifdef _WIN32
+bool is_interactive_console() {
+    return (_isatty(_fileno(stdin)) != 0) && (_isatty(_fileno(stdout)) != 0);
+}
+
+bool is_standalone_console() {
+    if (!is_interactive_console()) {
+        return false;
+    }
+    DWORD pids[2];
+    DWORD count = GetConsoleProcessList(pids, 2);
+    return (count <= 1);
+}
+
+void wait_on_exit_if_standalone() {
+    if (is_standalone_console()) {
+        std::cout << "\nPress Enter to exit...";
+        std::cout.flush();
+        std::cin.clear();
+        std::string dummy;
+        std::getline(std::cin, dummy);
+    }
+}
+
+std::filesystem::path get_executable_directory(const char* argv0) {
+    std::vector<wchar_t> buffer(MAX_PATH);
+    DWORD length = GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
+    while (length == buffer.size() && GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
+        buffer.resize(buffer.size() * 2);
+        length = GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
+    }
+    if (length > 0) {
+        return std::filesystem::path(buffer.data()).parent_path();
+    }
+    try {
+        if (argv0 && argv0[0] != '\0') {
+            return std::filesystem::absolute(argv0).parent_path();
+        }
+    } catch (...) {}
+    return std::filesystem::current_path();
+}
+#else
+bool is_interactive_console() {
+    return isatty(fileno(stdin)) && isatty(fileno(stdout));
+}
+
+bool is_standalone_console() {
+    return false;
+}
+
+void wait_on_exit_if_standalone() {
+}
+
+std::filesystem::path get_executable_directory(const char* argv0) {
+    try {
+        if (argv0 && argv0[0] != '\0') {
+            return std::filesystem::absolute(argv0).parent_path();
+        }
+    } catch (...) {}
+    return std::filesystem::current_path();
+}
+#endif
+
 void print_usage(std::string_view program_name) {
     std::cout << "KlyrDB - Relational Database Engine (v" << klyrdb::version().to_string() << ")\n\n"
-              << "Usage: " << program_name << " <command> [arguments]\n\n"
+              << "Usage: " << program_name << " [command] [arguments]\n\n"
+              << "If no command is provided, launches an interactive SQL shell on the default database.\n\n"
               << "Commands:\n"
               << "  sql <file> [query]                       Launch interactive SQL shell or execute a single query\n"
               << "  create <file>                            Create a new empty database file\n"
@@ -662,8 +740,33 @@ int cmd_analyze(const std::string& path, const std::string& table_name) {
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        print_usage(argv[0]);
-        return 1;
+        auto exe_dir = get_executable_directory(argv[0]);
+        auto data_dir = exe_dir / "data";
+        std::error_code ec;
+        std::filesystem::create_directories(data_dir, ec);
+
+        std::filesystem::path default_db_path;
+        if (!ec && std::filesystem::exists(data_dir)) {
+            default_db_path = data_dir / "klyrdb.kdb";
+        } else {
+            default_db_path = exe_dir / "klyrdb.kdb";
+        }
+
+        std::cout << "======================================================================\n"
+                  << "                  KlyrDB Relational Database Engine                   \n"
+                  << "======================================================================\n"
+                  << "Engine Version:         " << klyrdb::version().to_string() << " (C++20)\n"
+                  << "Storage Format Version: " << klyrdb::storage_format_version() << "\n"
+                  << "Execution Mode:         Interactive SQL Shell (Default Database)\n"
+                  << "Database File:          " << std::filesystem::absolute(default_db_path).string() << "\n"
+                  << "======================================================================\n"
+                  << "Type SQL statements ending with ';' or '.help' for help. Type '.quit' to exit.\n\n";
+
+        int res = cmd_sql(default_db_path.string(), "");
+        if (res != 0) {
+            wait_on_exit_if_standalone();
+        }
+        return res;
     }
 
     const std::string_view command = argv[1];
@@ -814,6 +917,7 @@ int main(int argc, char* argv[]) {
     } else {
         std::cerr << "Unknown command: " << command << "\n\n";
         print_usage(argv[0]);
+        wait_on_exit_if_standalone();
         return 1;
     }
 }

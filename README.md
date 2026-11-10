@@ -194,6 +194,17 @@ ctest --test-dir build -C Release --output-on-failure
 
 ## Quick-Start: Interactive CLI
 
+### Windows Quick-Start (Double-Click Execution)
+
+KlyrDB supports immediate interactive execution on Windows without requiring manual command-line invocation:
+
+1. **Launch Engine:** Download and extract the Windows release package (or compile the project with CMake), then double-click `klyrdb.exe` (located in `build\Release\` or the release root).
+2. **Default Database:** When invoked without arguments, KlyrDB automatically initializes and connects to `<exe_dir>\data\klyrdb.kdb` (creating the dedicated `data/` directory if needed).
+3. **Execute SQL:** Enter SQL queries ending with a semicolon (`;`), view tables (`.tables`), inspect schemas (`.schema`), or view commands (`.help`).
+4. **Exit:** Type `.quit` or `.exit` to cleanly flush cached pages and close the shell session.
+
+### Command-Line Usage
+
 The compiled database CLI (`klyrdb.exe`) provides direct query execution, interactive shell sessions, maintenance operations, and disaster recovery:
 
 ```powershell

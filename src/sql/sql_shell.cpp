@@ -33,13 +33,13 @@ void SqlShell::run() {
             break;
         }
 
-        // Trim leading whitespace for dot commands
+        // Trim leading and trailing whitespace
         size_t start = line.find_first_not_of(" \t\r\n");
         if (start == std::string::npos) {
             continue;
         }
-
-        std::string trimmed = line.substr(start);
+        size_t end = line.find_last_not_of(" \t\r\n");
+        std::string trimmed = line.substr(start, end - start + 1);
 
         if (current_query.empty() && trimmed.front() == '.') {
             if (!execute_line(trimmed)) {
